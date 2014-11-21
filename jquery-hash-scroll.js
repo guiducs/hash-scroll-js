@@ -4,6 +4,8 @@
 // se as páginas se moverem na horizontal tem que ser 100% e redimensionar de acordo se for a opção. Vertical redimensionar so se for menor que 100%
 // mode: dizer se o movimento e horizontal ou vertical
 // html5: dizer se usa a hash ou pushState
+// manter a hash inteira na url se o target for o que estiver lá
+// só ativar a pagina depois da animacao ou scrolls, até lá é só o target?
 ;(function($){
 
   function hashScroll(wrapper, options) {
@@ -12,25 +14,33 @@
       offset: 0,
       speed: 1000,
       easing: 'easeOutCubic',
+      beforeMove: function() {},
+      afterMove: function() {},
       onPageActive: function() {}
     }, options);
-    this.$targets = null;
-    this.$active = null;
-    this.watchHash = true;
+
+		this.wrapper   = wrapper;
+		this.$targets  = null;
+		this.$active   = null;
+    
+		this.hash      = "";
+		this.watchHash = true;
+
+    this.run();
   };
 
   hashScroll.prototype = {
-    init: function(options) {
-        this.getTargets();
-        this.bindUI();
-        this.activeByHash();
-        this.move();
+    run: function(options) {
+      this.getTargets();
+      this.bindUI();
+      this.activeByHash();
+      this.move();
     }, 
     getTargets: function() {
       if(this.$targets == null) {
         var targets = [];
       
-        $(wrapper).find(this.defaults.selector).each(function(){
+        $(this.wrapper).find(this.defaults.selector).each(function(){
           targets.push( $('#' + $(this).attr('id')) );
         });
 
@@ -39,118 +49,138 @@
 
       return this.$targets;
     },
-    getActive: function() {
-        if(this.$active == null) {
-            this.$active = this.getTargets()[0];
+    getTarget: function() {
+      var targets   = this.getTargets();
+      var scrollTop = $(window).scrollTop() +  this.defaults.offset;
+
+      targets = $(targets).map(function(){
+        if ($(this).offset().top <= scrollTop) {
+          return this;
         }
-        return this.$active;
+      });
+
+      if(targets.length > 0) {
+        return targets[targets.length - 1];
+      }
+
+      return null;
+    },
+    getActive: function() {
+      if(this.$active == null) {
+        this.$active = this.getTargets()[0];
+      }
+
+      return this.$active;
     },
     getPrev: function() {
-        var $prev = this.getActive().prev();
-        if($prev.length) {
-            return $prev;
-        }
-        return $this.active;
+      var $prev = this.getActive().prevAll(this.defaults.selector).first();
+      
+      if($prev.length) {
+        return $prev;
+      }
+
+      return this.$active;
     },
     getNext: function() {
-      var $next = this.getActive().next();
+      var $next = this.getActive().nextAll(this.defaults.selector).first();
+      
       if($next.length) {
         return $next;
       }
+
       return this.$active;
-    },
-    getCurrentTarget: function() {
-        var targets   = this.getTargets();
-        var scrollTop = $(window).scrollTop() +  this.defaults.offset;
-
-        targets = $(targets).map(function(){
-            if ($(this).offset().top <= scrollTop) {
-            	return this;
-            }
-        });
-
-        if(targets.length > 0) {
-  			return targets[targets.length - 1];
-        }
-
-        return null;
-    },
-    belongsToTargets: function($target) {   
-        return this.$targets.filter($target).length;
-    },
-    isCurrentTargetEqualsActive: function() {
-        return this.$active.is(this.getCurrentTarget());
     },
     getHash: function() {
       var hash = window.location.hash;
       
       if(hash) {
-        hash = hash.replace('!', '').split('/')[0]; // Pega o segmento da hash
+        hash = hash.replace('!', '').split('/')[0]; // Pega o primeiro segmento da hash
       }
 
       return hash;
     },
+    belongsToTargets: function(hash) {   
+      return (typeof $(hash) !== "undefined" && $(hash).hasClass(this.defaults.selector.replace('.', '')));
+    },
+    isCurrentTargetEqualsActive: function() {
+      return this.getActive().is(this.getTarget());
+    },
     activeByHash: function() {
-        var hash = this.getHash();
-        if(hash) {
-            if(this.belongsToTargets($(hash)) {  // É uma das páginas?
-                this.$active = $target; // Ativa
-            }
+      var hash = this.getHash();
+      if(hash) {
+        if(this.belongsToTargets(hash)) {  // É uma das páginas?
+          this.$active = $(hash); // Ativa
         }
+      }
     },
     updateHash: function() {
-        if(this.isCurrentTargetEqualsActive()) {
-            return;
-        }
+      if(this.isCurrentTargetEqualsActive()) {
+        return;
+      }
 
-        this.$active = this.getCurrentTarget();
+      this.$active = this.getTarget();
 
-        if(this.watchHash) {
-  			window.location.hash = "!" + this.$active.attr('id');
-        } 
-      
-        this.onPageActive(this.$active);
+      if(this.watchHash) {
+        window.location.hash = "!" + this.$active.attr('id');
+      } 
+
+      this.defaults.onPageActive(this.$active);
     },
-    move: function(callback) {
-        if(this.isCurrentTargetEqualsActive()) {
-            return;
-        }
+    move: function() {
+      if(this.isCurrentTargetEqualsActive()) {
+        return;
+      }
 
-        var self = this;
-        
-        // Não muda a hash até o final da animação
-        self.watchHash = false; 
+      var self = this;
+      
+      // Desabilita a atualizacao da hash no scroll
+      self.watchHash = false; 
 
-        $('body, html').stop().animate({ 
-            scrollTop: self.getActive().offset().top - self.defaults.offset
-        }, self.defaults.speed, self.defaults.easing , function() {
-            // setTimeout é utilizado pq a whatchHahs estava sendo mudado antes do final da animação mudando a hash sem necessidade
-            setTimeout(function() { 
-                self.watchHash = true; 
-                window.location.hash = "!" + this.$active.attr('id');
-            }, 100);
+      // Chama o callback que antecede o move()
+      self.defaults.beforeMove();
 
-        });
+      // Move
+      $('html,body').stop().animate({ 
+        scrollTop: self.getActive().offset().top - self.defaults.offset
+      }, self.defaults.speed, self.defaults.easing, function() {
+        setTimeout(function(){ // O callback do animate estava sendo executado antes da animação terminar, por isso o setTimeout
+        	
+        	// Só atualiza a hash se a página ativa for diferente da página na hash
+      		if(self.getHash().indexOf("#" + self.getActive().attr('id')) === -1) {
+      			window.location.hash = "!" + self.getActive().attr('id');
+      		} 
+
+        	// Dispara o evento pageActive
+          self.defaults.onPageActive(self.$active);
+
+          // A hash voltar a poder ser atualizada no scroll
+          self.watchHash = true; 
+        }, 100);
+      });
+
+      self.defaults.afterMove();
     },
     movePrev: function() {
-        this.$active = this.getPrev();
-        this.move();
+      this.$active = this.getPrev();
+      this.move();
     },
     moveNext: function() {
-        this.$active = this.getNext();
-        this.move();
+      this.$active = this.getNext();
+      this.move();
     },
     bindUI: function() {
         
-        var self = this;
-        $(window).hashchange(function() {
-            self.activeByHash();
-            self.move();
-            // when you get one element that is at the limit to another on the scroll it acts like than were the same than the hash does not changed
-            self.active = null; 
-        }).scroll(function() {	
-            self.updateHash();
-        });
+      var self = this;
+
+      $(window).hashchange(function() {
+      	self.hash = window.location.hash;
+        self.activeByHash();
+        self.move();
+      }).scroll(function() {	
+        self.updateHash();
+      }).load(function() {
+        self.defaults.onPageActive(self.getActive());
+      });
 
         // Habilita navegação pelo teclado
   		$(document).keydown(function(e){
@@ -158,10 +188,10 @@
   			if(charCode == 40 || charCode == 38) {
   				e.preventDefault();
   				if(charCode == 40) {
-      		        self.moveTo("next");
-      		    } else if(charCode == 38) {
-      		    	self.moveTo("prev");
-      		    }
+  		      self.moveNext();
+  		    } else if(charCode == 38) {
+  		    	self.movePrev();
+  		    }
   			}
   		});
 
@@ -170,7 +200,7 @@
 
   $.fn.hashScroll = function(options) {
     return this.each(function() {
-        new hashScroll(this, options).init();
+      $(this).data('hashScroll', new hashScroll(this, options));
     });
   }
 
