@@ -22,10 +22,7 @@
 		this.wrapper   = wrapper;
 		this.$targets  = null;
 		this.$active   = null;
-    
-		this.hash      = "";
 		this.watchHash = true;
-
     this.run();
   };
 
@@ -33,7 +30,13 @@
     run: function(options) {
       this.getTargets();
       this.bindUI();
-      this.activeByHash();
+
+      if(this.getHash() == "") {
+        this.active(this.getTargets()[0]);
+      } else {
+        this.activeByHash();
+      }
+      
       this.move();
     }, 
     getTargets: function() {
@@ -67,9 +70,8 @@
     },
     getActive: function() {
       if(this.$active == null) {
-        this.$active = this.getTargets()[0];
+        return this.getTargets()[0];
       }
-
       return this.$active;
     },
     getPrev: function() {
@@ -94,7 +96,7 @@
       var hash = window.location.hash;
       
       if(hash) {
-        hash = hash.replace('!', '').split('/')[0]; // Pega o primeiro segmento da hash
+        hash = hash.replace('!', '').split('/')[0]; 
       }
 
       return hash;
@@ -105,11 +107,15 @@
     isCurrentTargetEqualsActive: function() {
       return this.getActive().is(this.getTarget());
     },
+    active: function($target) {
+      this.$active = $target;
+      this.defaults.onPageActive(this.$active);
+    },
     activeByHash: function() {
       var hash = this.getHash();
       if(hash) {
         if(this.belongsToTargets(hash)) {  // É uma das páginas?
-          this.$active = $(hash); // Ativa
+          this.active($(hash)); // Ativa
         }
       }
     },
@@ -118,13 +124,11 @@
         return;
       }
 
-      this.$active = this.getTarget();
+      this.active(this.getTarget());
 
       if(this.watchHash) {
         window.location.hash = "!" + this.$active.attr('id');
-      } 
-
-      this.defaults.onPageActive(this.$active);
+      }
     },
     move: function() {
       if(this.isCurrentTargetEqualsActive()) {
@@ -140,32 +144,24 @@
       self.defaults.beforeMove();
 
       // Move
+      var distance = self.getActive().offset().top - self.defaults.offset;
       $('html,body').stop().animate({ 
-        scrollTop: self.getActive().offset().top - self.defaults.offset
+        scrollTop: distance
       }, self.defaults.speed, self.defaults.easing, function() {
-        setTimeout(function(){ // O callback do animate estava sendo executado antes da animação terminar, por isso o setTimeout
-        	
-        	// Só atualiza a hash se a página ativa for diferente da página na hash
-      		if(self.getHash().indexOf("#" + self.getActive().attr('id')) === -1) {
-      			window.location.hash = "!" + self.getActive().attr('id');
-      		} 
-
-        	// Dispara o evento pageActive
-          self.defaults.onPageActive(self.$active);
-
-          // A hash voltar a poder ser atualizada no scroll
-          self.watchHash = true; 
-        }, 100);
+        // O callback do animate estava sendo executado antes da animação terminar, por isso o setTimeout
+        setTimeout(function(){ 
+          self.watchHash = true; // A hash volta a poder ser atualizada no scroll
+        }, 300);
       });
 
       self.defaults.afterMove();
     },
     movePrev: function() {
-      this.$active = this.getPrev();
+      this.active(this.getPrev());
       this.move();
     },
     moveNext: function() {
-      this.$active = this.getNext();
+      this.active(this.getNext());
       this.move();
     },
     bindUI: function() {
@@ -173,13 +169,10 @@
       var self = this;
 
       $(window).hashchange(function() {
-      	self.hash = window.location.hash;
         self.activeByHash();
         self.move();
       }).scroll(function() {	
         self.updateHash();
-      }).load(function() {
-        self.defaults.onPageActive(self.getActive());
       });
 
         // Habilita navegação pelo teclado
