@@ -6,17 +6,20 @@
 // html5: dizer se usa a hash ou pushState
 // manter a hash inteira na url se o target for o que estiver lá
 // só ativar a pagina depois da animacao ou scrolls, até lá é só o target?
+// Chamar um method um metodo pra disparar um evento antes de chegar na pagina (onBeforePageActive, offsetBefore), stopOnOffset ta funcionando assim mas o nome e jeito estão estnhos
 ;(function($){
 
   function hashScroll(wrapper, options) {
     this.defaults = $.extend({
       selector: '.page',
+      speed: 1300,
+      easing: 'easeInOutQuad',
       offset: 0,
-      speed: 1000,
-      easing: 'easeOutCubic',
+      stopOnOffset: true,
       beforeMove: function() {},
       afterMove: function() {},
-      onPageActive: function() {}
+      onPageActive: function() {},
+      onReachOffset: function() {}
     }, options);
 
 		this.wrapper   = wrapper;
@@ -109,7 +112,7 @@
     },
     active: function($target) {
       this.$active = $target;
-      this.defaults.onPageActive(this.$active);
+      // this.defaults.onPageActive(this.$active);
     },
     activeByHash: function() {
       var hash = this.getHash();
@@ -120,11 +123,12 @@
       }
     },
     updateHash: function() {
-      if(this.isCurrentTargetEqualsActive()) {
-        return;
-      }
+      // if(this.isCurrentTargetEqualsActive()) {
+      //   return;
+      // }
 
       this.active(this.getTarget());
+      this.defaults.onPageActive(this.$active);
 
       if(this.watchHash) {
         window.location.hash = "!" + this.$active.attr('id');
@@ -141,20 +145,21 @@
       self.watchHash = false; 
 
       // Chama o callback que antecede o move()
-      self.defaults.beforeMove();
+      self.defaults.beforeMove( self.getActive() );
 
       // Move
-      var distance = self.getActive().offset().top - self.defaults.offset;
+      var distance = (self.defaults.stopOnOffset) ? self.getActive().offset().top - self.defaults.offset : self.getActive().offset().top;
+
       $('html,body').stop().animate({ 
         scrollTop: distance
       }, self.defaults.speed, self.defaults.easing, function() {
         // O callback do animate estava sendo executado antes da animação terminar, por isso o setTimeout
         setTimeout(function(){ 
           self.watchHash = true; // A hash volta a poder ser atualizada no scroll
+          self.defaults.afterMove( self.getActive() );
         }, 300);
-      });
 
-      self.defaults.afterMove();
+      });
     },
     movePrev: function() {
       this.active(this.getPrev());
