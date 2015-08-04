@@ -7,12 +7,13 @@
 // manter a hash inteira na url se o target for o que estiver lá
 // só ativar a pagina depois da animacao ou scrolls, até lá é só o target?
 // Chamar um method um metodo pra disparar um evento antes de chegar na pagina (onBeforePageActive, offsetBefore), stopOnOffset ta funcionando assim mas o nome e jeito estão estnhos
+// http://stackoverflow.com/questions/1034306/public-functions-from-within-a-jquery-plugin methodos publicos
 ;(function($){
 
   function hashScroll(wrapper, options) {
     this.defaults = $.extend({
       selector: '.page',
-      speed: 1300,
+      speed: 300,
       easing: 'easeInOutQuad',
       offset: 0,
       stopOnOffset: true,
@@ -33,14 +34,7 @@
     run: function(options) {
       this.getTargets();
       this.bindUI();
-
-      if(this.getHash() == "") {
-        this.active(this.getTargets()[0]);
-      } else {
-        this.activeByHash();
-      }
-      
-      this.move();
+      this.activeByHash();
     }, 
     getTargets: function() {
       if(this.$targets == null) {
@@ -84,7 +78,7 @@
         return $prev;
       }
 
-      return this.$active;
+      return this.getActive();
     },
     getNext: function() {
       var $next = this.getActive().nextAll(this.defaults.selector).first();
@@ -93,7 +87,7 @@
         return $next;
       }
 
-      return this.$active;
+      return this.getActive();
     },
     getHash: function() {
       var hash = window.location.hash;
@@ -112,26 +106,28 @@
     },
     active: function($target) {
       this.$active = $target;
-      // this.defaults.onPageActive(this.$active);
+      this.move();
     },
     activeByHash: function() {
       var hash = this.getHash();
-      if(hash) {
+      if( hash ) {
         if(this.belongsToTargets(hash)) {  // É uma das páginas?
           this.active($(hash)); // Ativa
         }
       }
     },
     updateHash: function() {
-      // if(this.isCurrentTargetEqualsActive()) {
-      //   return;
-      // }
+      if(this.isCurrentTargetEqualsActive()) {
+        return;
+      }
 
-      this.active(this.getTarget());
-      this.defaults.onPageActive(this.$active);
+      if(this.getTarget() != null) {
+        this.active(this.getTarget());
+        this.defaults.onPageActive(this.$active);
 
-      if(this.watchHash) {
-        window.location.hash = "!" + this.$active.attr('id');
+        if(this.watchHash) {
+          window.location.hash = "!" + this.$active.attr('id');
+        }
       }
     },
     move: function() {
@@ -163,11 +159,9 @@
     },
     movePrev: function() {
       this.active(this.getPrev());
-      this.move();
     },
     moveNext: function() {
       this.active(this.getNext());
-      this.move();
     },
     bindUI: function() {
         
@@ -175,7 +169,6 @@
 
       $(window).hashchange(function() {
         self.activeByHash();
-        self.move();
       }).scroll(function() {	
         self.updateHash();
       });
