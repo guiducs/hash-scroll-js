@@ -15,3 +15,4 @@ Sites que utilizam o plugin
 * [Programa Mato-grossense de Municípios Sustentáveis](http://municipiossustentaveis.org.br/)
 * [Sensei.in](http://sensein.com.br/)
 * [Dr. Elson Adorno](http://www.elsonadorno.com.br/)
+* [On Mídias](http://www.onmidias.com.br/)
