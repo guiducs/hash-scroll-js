@@ -12,7 +12,7 @@
   "_originalSource": "https://github.com/guiducs/hash-scroll-js.git",
   "_direct": true,
   "main": [
-    "jquery-hash-scroll.js",
+    "jquery-hash-scroll.js"
   ],
   "ignore": [
     "**/.*",
@@ -25,7 +25,7 @@
   ],
   "dependencies": {
     "jquery": ">=1.8.3",
-    "jquery-hashchange",
-    "easing"
+    "jquery-hashchange": "latest",
+    "easing": "latest"
   }
 }
