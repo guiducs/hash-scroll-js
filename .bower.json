@@ -1,0 +1,31 @@
+{
+  "name": "hash-scroll-js",
+  "homepage": "https://github.com/guiducs/hash-scroll-js",
+  "_release": "3f5f63b2be",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "3f5f63b2be84395017b8761f99b8626c7c42e1ca"
+  },
+  "_source": "https://github.com/guiducs/hash-scroll-js.git",
+  "_target": "*",
+  "_originalSource": "https://github.com/guiducs/hash-scroll-js.git",
+  "_direct": true,
+  "main": [
+    "jquery-hash-scroll.js"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "package.json",
+    "index.html"
+  ],
+  "dependencies": {
+    "jquery": ">=1.8.3",
+    "jquery-hashchange": "latest",
+    "jquery.easing": "jquery.easing.gsgd#^1.4.1"
+  }
+}
