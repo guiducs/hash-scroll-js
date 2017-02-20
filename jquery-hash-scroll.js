@@ -13,8 +13,7 @@
     }, options);
 
     this.wrapper   = wrapper;
-    this.$targets  = null;
-    this.$target   = null;
+    this.$pages    = null;
     this.$active   = null;
     this.watchHash = true;
     this.run();
@@ -22,49 +21,49 @@
 
   hashScroll.prototype = {
     run: function(options) {
-      this.getTargets();
+      this.getPages();
       this.bindUI();
     }, 
-    getTargets: function() {
-      if(this.$targets == null) {
-        var targets = [];
+    getPages: function() {
+      if(this.$pages == null) {
+        var pages = [];
       
         $(this.wrapper).find(this.defaults.selector).each(function(){
-          targets.push( $('#' + $(this).attr('id')) );
+          pages.push($('#' + $(this).attr('id')));
         });
 
-        this.$targets = targets;
+        this.$pages = pages;
       }
 
-      return this.$targets;
+      return this.$pages;
     },
-    getTarget: function() {
-      var targets   = this.getTargets();
+    getCurrent: function() {
+      var pages     = this.getPages();
       var scrollTop = $(window).scrollTop() +  this.defaults.offset;
 
-      targets = $(targets).map(function(){
+      pages = $(pages).map(function(){
         if ($(this).offset().top <= scrollTop) {
           return this;
         }
       });
 
-      if(targets.length > 0) {
-        return targets[targets.length - 1];
+      if(pages.length > 0) {
+        return pages[pages.length - 1];
       }
 
       return null;
     },
-    getPrev: function() {
+    getActive: function() {
       if(this.$active == null) {
-        return this.getTargets()[0].prevAll(this.defaults.selector).first();
+        this.$active = this.getPages()[0];
       }
-      return this.$active.prevAll(this.defaults.selector).first();  
+      return this.$active;
+    },
+    getPrev: function() {
+      return this.getActive().prevAll(this.defaults.selector).first();  
     },
     getNext: function() {
-      if(this.$active == null) {
-        return this.getTargets()[0].nextAll(this.defaults.selector).first();
-      }
-      return this.$active.nextAll(this.defaults.selector).first();  
+      return this.getActive().nextAll(this.defaults.selector).first();  
     },
     getHash: function() {
       var hash = window.location.hash;
@@ -79,24 +78,17 @@
       }  
       return false;
     },
-    isTargetActive: function() {
-      if(this.$active == null) {
-        return false;
-      }
-      return this.$active.is(this.$target);
-    },
     activeByHash: function() {
       var hash = this.getHash();
       if( hash ) {
         if(this.isTarget(hash)) {  // É uma das páginas?
-          this.$target = $(hash);
-          this.move(this.$target); 
+          this.move( $(hash) ); 
         }
       }
     },
     move: function($target) {
       // A página já está ativa
-      if(this.isTargetActive()) {
+      if(this.getActive().is($target)) {
         return;
       }
 
@@ -117,35 +109,27 @@
       }, self.defaults.speed, self.defaults.easing, function() {
         // O callback do animate estava sendo executado antes da animação terminar, por isso o setTimeout
         setTimeout(function(){ 
-          self.watchHash = true; // A hash volta a poder ser atualizada no scroll
+          self.watchHash       = true; // A hash volta a poder ser atualizada no scroll
+          self.$active         = $target; // Atualiza a pagina ativa
+          window.location.hash = "!" + self.$active.attr('id'); // Atualiza a hash
           self.defaults.afterMove( $target );
-        }, 300);
-
+        }, 100);
       });
     },
     movePrev: function() {
-      this.$target = this.getPrev();
-      this.move(this.$target);
+      this.move(this.getPrev());
     },
     moveNext: function() {
-      this.$target = this.getNext();
-      this.move(this.$target);
+      this.move(this.getNext());
     },
     updateHash: function() {
-      //Não está em nenhuma página
-      if(this.getTarget() == null) {
+      //Não está em nenhuma página ou já está na página
+      var current = this.getCurrent();
+      if(current == null || this.getActive().is(current)) {
         return;
       }
 
-      //
-      this.$target = this.getTarget();
-
-      // A página já está ativa?
-      if(this.isTargetActive()) {
-        return;
-      }
-
-      this.$active = this.getTarget();
+      this.$active = this.getCurrent();
       
       this.defaults.onPageActive(this.$active);
 
@@ -158,26 +142,24 @@
         
       var self = this;
 
-      $(window).hashchange(function() {
+      $(window).bind('hashchange load', function(){
         self.activeByHash();
-      }).scroll(function() {	
+      }).bind('scroll', function() {
         self.updateHash();
-      }).load(function(){
-        self.activeByHash();
-      });
+      })
 
         // Habilita navegação pelo teclado
-  		$(document).keydown(function(e){
-  			var charCode = e.which ? e.which : event.keyCode
-  			if(charCode == 40 || charCode == 38) {
-  				e.preventDefault();
-  				if(charCode == 40) {
-  		      self.moveNext();
-  		    } else if(charCode == 38) {
-  		    	self.movePrev();
-  		    }
-  			}
-  		});
+      $(document).keydown(function(e){
+        var charCode = e.which ? e.which : event.keyCode
+        if(charCode == 40 || charCode == 38) {
+          e.preventDefault();
+          if(charCode == 40) {
+            self.moveNext();
+          } else if(charCode == 38) {
+            self.movePrev();
+          }
+        }
+      });
 
     }
   };
